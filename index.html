@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>WordVault · 考研英语二真题单词收集器</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="WordVault">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<meta name="description" content="考研英语二真题单词收集、复习与统计，数据保存在本机。">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ======================= 首页 ======================= -->
+  <section class="view is-active" id="view-home" aria-label="首页">
+    <div class="view-scroll">
+      <header class="page-head">
+        <p class="page-kicker" id="homeDate">—</p>
+        <h1 class="page-title">WordVault</h1>
+      </header>
+      <div class="page-body">
+        <div class="card hero-card">
+          <div class="hero-main">
+            <p class="hero-label">今日待复习</p>
+            <p class="hero-number"><span id="homeDue">0</span><span class="hero-unit">词</span></p>
+            <p class="hero-sub" id="homeDueSub">所有单词都在计划内</p>
+          </div>
+          <div class="ring" id="homeRing" aria-hidden="true"></div>
+          <button class="btn btn-primary" data-action="start-review">开始复习</button>
+        </div>
+
+        <div class="stat-strip" id="homeStats"></div>
+
+        <section class="block">
+          <div class="block-head">
+            <h2 class="block-title">快速添加</h2>
+            <button class="text-btn" data-action="open-add-sheet">更多字段</button>
+          </div>
+          <div class="card form-card">
+            <div class="field">
+              <label for="quickWord">英文单词 *</label>
+              <input id="quickWord" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="如 sustainable">
+            </div>
+            <div class="field">
+              <label for="quickMeaning">中文释义</label>
+              <input id="quickMeaning" type="text" autocomplete="off" placeholder="如 adj. 可持续的">
+            </div>
+            <button class="btn btn-primary btn-block" data-action="quick-add">添加到单词本</button>
+          </div>
+        </section>
+
+        <section class="block">
+          <div class="block-head">
+            <h2 class="block-title">最近添加</h2>
+            <button class="text-btn" data-action="go-words">查看全部</button>
+          </div>
+          <div id="homeRecent"></div>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 单词本 ======================= -->
+  <section class="view" id="view-words" aria-label="单词本">
+    <div class="view-scroll">
+      <header class="page-head">
+        <div class="page-head-row">
+          <h1 class="page-title" id="wordsTitle">单词本</h1>
+          <button class="text-btn" id="selectToggle" data-action="toggle-select">选择</button>
+        </div>
+      </header>
+      <div class="page-body">
+        <div class="search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+          <input id="searchInput" class="search-input" type="search" placeholder="搜索单词、释义、例句、笔记" autocomplete="off">
+          <button class="search-clear" id="searchClear" data-action="clear-search" aria-label="清空搜索" hidden>&times;</button>
+        </div>
+
+        <div class="filter-row" id="filterRow">
+          <button class="chip" data-action="filter-year" id="chipYear">年份：全部</button>
+          <button class="chip" data-action="filter-level" id="chipLevel">熟悉度：全部</button>
+          <button class="chip" data-action="toggle-fav-filter" id="chipFav">收藏</button>
+          <button class="chip" data-action="filter-section" id="chipSection">题型：全部</button>
+          <button class="chip" data-action="sort-words" id="chipSort">排序：最新</button>
+        </div>
+
+        <div class="list-meta">
+          <p class="list-count" id="wordsCount">—</p>
+          <button class="text-btn" id="wordsReset" data-action="reset-filter" hidden>清除筛选</button>
+        </div>
+        <div id="wordsList"></div>
+      </div>
+    </div>
+
+    <!-- 批量操作栏 -->
+    <div class="bulk-bar" id="bulkBar" hidden>
+      <div class="bulk-info"><span id="bulkCount">已选 0 项</span></div>
+      <div class="bulk-actions">
+        <button class="text-btn" data-action="bulk-all" id="bulkAll">全选</button>
+        <button class="text-btn" data-action="bulk-fav-on">收藏</button>
+        <button class="text-btn" data-action="bulk-fav-off">取消收藏</button>
+        <button class="text-btn" data-action="bulk-master">设已掌握</button>
+        <button class="text-btn danger" data-action="bulk-delete">删除</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= 复习 ======================= -->
+  <section class="view" id="view-review" aria-label="复习">
+    <div class="view-scroll">
+      <header class="page-head">
+        <div class="page-head-row">
+          <h1 class="page-title">复习</h1>
+          <button class="text-btn" id="reviewQuit" data-action="quit-review" hidden>结束</button>
+        </div>
+        <div class="progress-track" id="reviewProgressTrack" hidden><div class="progress-fill" id="reviewProgressFill"></div></div>
+        <p class="review-progress-text" id="reviewProgressText" hidden></p>
+      </header>
+      <div class="page-body" id="reviewBody"></div>
+    </div>
+  </section>
+
+  <!-- ======================= 统计 ======================= -->
+  <section class="view" id="view-stats" aria-label="统计">
+    <div class="view-scroll">
+      <header class="page-head">
+        <h1 class="page-title">统计</h1>
+      </header>
+      <div class="page-body" id="statsBody"></div>
+    </div>
+  </section>
+
+  <!-- ======================= 设置 ======================= -->
+  <section class="view" id="view-settings" aria-label="设置">
+    <div class="view-scroll">
+      <header class="page-head">
+        <h1 class="page-title">设置</h1>
+      </header>
+      <div class="page-body" id="settingsBody"></div>
+    </div>
+  </section>
+
+  <!-- ======================= 底部导航 ======================= -->
+  <nav class="tab-bar" aria-label="主导航">
+    <span class="dock-pill" id="dockPill" aria-hidden="true"></span>
+    <button class="tab is-active" data-tab="home">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.6 12 4l8 6.6V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>
+      <span>首页</span>
+    </button>
+    <button class="tab" data-tab="words">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H18a1 1 0 0 1 1 1v15.5a1 1 0 0 1-1 1H6.5A1.5 1.5 0 0 1 5 19z"/><path d="M9 3v18"/></svg>
+      <span>单词本</span>
+    </button>
+    <button class="tab" data-tab="review">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6.5" width="14" height="10" rx="2.5"/><path d="M8 6.5V5.2A1.7 1.7 0 0 1 9.7 3.5h9A1.7 1.7 0 0 1 20.5 5.2v9a1.7 1.7 0 0 1-1.7 1.7H17.5"/></svg>
+      <span>复习</span>
+      <span class="tab-badge" id="tabBadge" hidden>0</span>
+    </button>
+    <button class="tab" data-tab="stats">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M6.5 20V12"/><path d="M12 20V5"/><path d="M17.5 20v-5"/></svg>
+      <span>统计</span>
+    </button>
+    <button class="tab" data-tab="settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v2.2M12 18.3v2.2M4.9 7.9l1.9 1.1M17.2 15l1.9 1.1M4.9 16.1l1.9-1.1M17.2 9l1.9-1.1"/></svg>
+      <span>设置</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ======================= 单词编辑面板 ======================= -->
+<div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+<section class="sheet" id="wordSheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <span class="sheet-grabber" aria-hidden="true"></span>
+  <div class="sheet-head">
+    <button class="text-btn" data-action="close-sheet">取消</button>
+    <h2 class="sheet-title" id="sheetTitle">添加单词</h2>
+    <button class="text-btn strong" data-action="save-word">保存</button>
+  </div>
+  <div class="sheet-body">
+    <div class="form-group">
+      <div class="field">
+        <label for="fWord">英文单词 <span class="req">*</span></label>
+        <input id="fWord" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="如 sustainable">
+      </div>
+      <div class="field">
+        <label for="fMeaning">中文释义</label>
+        <input id="fMeaning" type="text" autocomplete="off" placeholder="如 adj. 可持续的；能维持的">
+      </div>
+    </div>
+
+    <p class="form-section-title">真题出处</p>
+    <div class="form-group">
+      <div class="field-row">
+        <div class="field">
+          <label for="fYear">年份</label>
+          <input id="fYear" type="text" inputmode="numeric" autocomplete="off" placeholder="如 2023">
+        </div>
+        <div class="field">
+          <label for="fSection">题型</label>
+          <select id="fSection">
+            <option value="">未填写</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row" id="readingRow" hidden>
+        <div class="field">
+          <label for="fPart">Part</label>
+          <select id="fPart">
+            <option value="">未填写</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fPassage">文章编号</label>
+          <input id="fPassage" type="text" autocomplete="off" placeholder="如 Text 1">
+        </div>
+      </div>
+      <div class="field">
+        <label for="fParagraph">段落 / 位置</label>
+        <input id="fParagraph" type="text" autocomplete="off" placeholder="如 第 3 段第 2 句">
+      </div>
+      <div class="field">
+        <label for="fSentence">原文例句</label>
+        <textarea id="fSentence" rows="3" placeholder="粘贴该词所在的真题原句（可留空）"></textarea>
+      </div>
+    </div>
+
+    <p class="form-section-title">个人记录</p>
+    <div class="form-group">
+      <div class="field">
+        <label for="fNote">笔记</label>
+        <textarea id="fNote" rows="3" placeholder="搭配、易混词、记忆点……"></textarea>
+      </div>
+      <div class="field">
+        <label>熟悉程度</label>
+        <div class="segmented" id="fLevel" role="radiogroup" aria-label="熟悉程度"></div>
+      </div>
+      <div class="field field-inline">
+        <label for="fFavorite">加入收藏</label>
+        <label class="switch">
+          <input id="fFavorite" type="checkbox">
+          <span class="switch-track"><span class="switch-knob"></span></span>
+        </label>
+      </div>
+    </div>
+
+    <button class="btn btn-danger btn-block" data-action="delete-current" id="sheetDelete" hidden>删除这个单词</button>
+    <p class="sheet-hint" id="sheetMeta"></p>
+  </div>
+</section>
+
+<!-- ======================= 通用对话框 ======================= -->
+<div class="dialog-backdrop" id="dialogBackdrop" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <h3 id="dialogTitle">提示</h3>
+    <p id="dialogText"></p>
+    <div id="dialogFields"></div>
+    <div class="dialog-actions" id="dialogActions"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
