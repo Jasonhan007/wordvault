@@ -46,12 +46,28 @@
     if (w.paragraph) bits.push(w.paragraph);
     return bits.map(b => '<span>' + esc(b) + '</span>').join('');
   }
+  /* 图标：全部 24×24 网格、只描边（stroke 由 CSS 继承）、linejoin/linecap 为 round。
+     统一在 app.js 定义，Dock 与内容区共用同一份，避免两处图形走形。 */
   const ICON = {
-    star: '<svg viewBox="0 0 24 24"><path d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.6 9.7l5.8-.8z"/></svg>',
-    book: '<svg viewBox="0 0 24 24"><path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H18a1 1 0 0 1 1 1v15.5a1 1 0 0 1-1 1H6.5A1.5 1.5 0 0 1 5 19z"/><path d="M9 3v18"/></svg>',
-    search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>',
-    chart: '<svg viewBox="0 0 24 24"><path d="M4 20h16"/><path d="M6.5 20V12"/><path d="M12 20V5"/><path d="M17.5 20v-5"/></svg>'
+    home: '<path d="M3.4 11.6 12 4.4l8.6 7.2"/>' +
+      '<path d="M5.6 10.4h12.8v9.2a1.8 1.8 0 0 1-1.8 1.8H7.4a1.8 1.8 0 0 1-1.8-1.8z"/>' +
+      '<path d="M9.9 21.4v-3.5a2.1 2.1 0 0 1 4.2 0v3.5"/>',
+    book: '<path d="M12 7.3C10.4 5.9 8.2 5.2 5.6 5.2h-.4A1.2 1.2 0 0 0 4 6.4v10.3a1.2 1.2 0 0 0 1.2 1.2h.4c2.6 0 4.8.7 6.4 2 1.6-1.3 3.8-2 6.4-2h.4a1.2 1.2 0 0 0 1.2-1.2V6.4a1.2 1.2 0 0 0-1.2-1.2h-.4c-2.6 0-4.8.7-6.4 2.1z"/>' +
+      '<path d="M12 7.3v12.6"/>',
+    review: '<path d="M8.2 5.2h8.6a3.2 3.2 0 0 1 3.2 3.2v7.4"/>' +
+      '<rect x="3.9" y="8.5" width="12.9" height="10.6" rx="3"/>',
+    stats: '<path d="M4.8 20.2h14.4"/><path d="M8.4 20.2v-6.6"/>' +
+      '<path d="M12 20.2V5.4"/><path d="M15.6 20.2v-9.4"/>',
+    /* 8 齿齿轮：齿顶/齿谷用圆弧、齿侧用直线，一次连笔成形（无接缝） */
+    settings: '<path d="M10.53 2.72A9.4 9.4 0 0 1 13.47 2.72L14.51 5.09A7.35 7.35 0 0 1 15.11 5.34L17.53 4.4A9.4 9.4 0 0 1 19.6 6.47L18.66 8.89A7.35 7.35 0 0 1 18.91 9.49L21.28 10.53A9.4 9.4 0 0 1 21.28 13.47L18.91 14.51A7.35 7.35 0 0 1 18.66 15.11L19.6 17.53A9.4 9.4 0 0 1 17.53 19.6L15.11 18.66A7.35 7.35 0 0 1 14.51 18.91L13.47 21.28A9.4 9.4 0 0 1 10.53 21.28L9.49 18.91A7.35 7.35 0 0 1 8.89 18.66L6.47 19.6A9.4 9.4 0 0 1 4.4 17.53L5.34 15.11A7.35 7.35 0 0 1 5.09 14.51L2.72 13.47A9.4 9.4 0 0 1 2.72 10.53L5.09 9.49A7.35 7.35 0 0 1 5.34 8.89L4.4 6.47A9.4 9.4 0 0 1 6.47 4.4L8.89 5.34A7.35 7.35 0 0 1 9.49 5.09z"/>' +
+      '<circle cx="12" cy="12" r="3.25"/>',
+    star: '<path d="M12 3.9l2.55 5.17 5.7.83-4.13 4.02.98 5.68L12 16.92l-5.1 2.68.98-5.68L3.75 9.9l5.7-.83z"/>',
+    search: '<circle cx="10.8" cy="10.8" r="6.4"/><path d="M19.6 19.6l-3.8-3.8"/>'
   };
+  const TAB_ICON = { home: 'home', words: 'book', review: 'review', stats: 'stats', settings: 'settings' };
+  function svgIcon(name) {
+    return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (ICON[name] || '') + '</svg>';
+  }
 
   /* ---------------------------- 界面状态 ---------------------------- */
   const ui = {
@@ -157,7 +173,7 @@
     const recent = V.recent(5);
     $('#homeRecent').innerHTML = recent.length
       ? '<div class="list-card">' + recent.map(wordRow).join('') + '</div>'
-      : emptyState(ICON.book, '还没有单词', '在上面的输入框里填一个词，就能开始建立自己的真题词库。');
+      : emptyState(svgIcon('book'), '还没有单词', '在上面的输入框里填一个词，就能开始建立自己的真题词库。');
   }
 
   /* 今日进度环：已完成 = 今日已复习次数，总量 = 已完成 + 仍待复习 */
@@ -192,7 +208,7 @@
         '<div class="row-side">' +
           levelBadge(w.level) +
           (ui.selectMode ? '' :
-            '<button class="star-btn' + (w.favorite ? ' is-on' : '') + '" data-action="toggle-fav" data-id="' + w.id + '" aria-label="收藏">' + ICON.star + '</button>') +
+            '<button class="star-btn' + (w.favorite ? ' is-on' : '') + '" data-action="toggle-fav" data-id="' + w.id + '" aria-label="收藏">' + svgIcon('star') + '</button>') +
         '</div>' +
       '</div>';
   }
@@ -232,12 +248,12 @@
 
     let html;
     if (total === 0) {
-      html = emptyState(ICON.book, '单词本还是空的',
+      html = emptyState(svgIcon('book'), '单词本还是空的',
         '点右上角「选择」旁的加号，或到首页快速添加第一个真题单词。',
         '<button class="btn btn-primary" data-action="open-add-sheet">添加单词</button>' +
         '<button class="btn" data-action="add-samples">加载示例数据</button>');
     } else if (!rows.length) {
-      html = emptyState(ICON.search, '没有符合条件的单词', '试试换个关键词，或清除筛选条件。',
+      html = emptyState(svgIcon('search'), '没有符合条件的单词', '试试换个关键词，或清除筛选条件。',
         '<button class="btn" data-action="reset-filter">清除筛选</button>');
     } else {
       html = '<div class="list-card">' + rows.map(wordRow).join('') + '</div>';
@@ -249,6 +265,7 @@
     $('#bulkBar').hidden = !ui.selectMode;
     $('#selectToggle').textContent = ui.selectMode ? '完成' : '选择';
     $('#wordsTitle').textContent = ui.selectMode ? '批量管理' : '单词本';
+    $('#wordsNavTitle').textContent = ui.selectMode ? '批量管理' : '单词本';
     $('#bulkCount').textContent = '已选 ' + ui.selection.size + ' 项' + (ui.selectMode ? '（点击词条勾选）' : '');
     const allSelected = rows.length > 0 && rows.every(w => ui.selection.has(w.id));
     $('#bulkAll').textContent = allSelected ? '取消全选' : '全选';
@@ -268,6 +285,7 @@
       const years = V.years();
       const sections = V.sectionsUsed();
       $('#reviewBody').innerHTML = '' +
+        '<div class="page-header"><h1 class="page-title">复习</h1></div>' +
         '<div class="card">' +
           '<p class="hero-label">今日待复习</p>' +
           '<p class="hero-number"><span>' + due + '</span><span class="hero-unit">词</span></p>' +
@@ -417,7 +435,7 @@
     const body = $('#statsBody');
 
     if (s.total === 0) {
-      body.innerHTML = emptyState(ICON.chart, '还没有可统计的数据',
+      body.innerHTML = emptyState(svgIcon('stats'), '还没有可统计的数据',
         '添加几个真题单词后，这里会显示总量、掌握率、年份与题型分布。',
         '<button class="btn btn-primary" data-action="open-add-sheet">添加单词</button>' +
         '<button class="btn" data-action="add-samples">加载示例数据</button>');
@@ -1077,6 +1095,14 @@
       V.PARTS.map(p => '<option value="' + p + '">' + p + '</option>').join('');
     buildLevelSegmented();
 
+    // 图标统一注入（齿轮、书本等图形只在 ICON 里定义一次）
+    $$('.tab').forEach(tab => {
+      const svg = tab.querySelector('svg');
+      if (svg) svg.innerHTML = ICON[TAB_ICON[tab.dataset.tab]] || '';
+    });
+    const searchIcon = $('.search-icon');
+    if (searchIcon) searchIcon.innerHTML = ICON.search;
+
     // 隐藏的导入文件输入
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
@@ -1098,13 +1124,15 @@
     const hashView = (location.hash || '').replace('#/', '');
     setView(VIEWS.indexOf(hashView) >= 0 ? hashView : 'home', { silent: true });
 
-    // 滚动时标题收缩为紧凑导航条
+    // 滚动后顶栏顶部的标题淡入；用滞回阈值避免在临界点反复触发
     $$('.view-scroll').forEach(scroller => {
       const head = scroller.querySelector('.page-head');
       if (!head) return;
       scroller.addEventListener('scroll', () => {
-        const compact = scroller.scrollTop > 8;
-        if (head.classList.contains('is-compact') !== compact) head.classList.toggle('is-compact', compact);
+        const top = scroller.scrollTop;
+        const compact = head.classList.contains('is-compact');
+        if (!compact && top > 28) head.classList.add('is-compact');
+        else if (compact && top < 10) head.classList.remove('is-compact');
       }, { passive: true });
     });
 
