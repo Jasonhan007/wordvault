@@ -47,8 +47,8 @@
   --r-md: 16px;
   --r-sm: 12px;
 
-  --sh-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 10px 26px -16px rgba(16, 24, 40, 0.18);
-  --sh-float: 0 12px 34px -8px rgba(16, 24, 40, 0.24), 0 2px 8px rgba(16, 24, 40, 0.06);
+  --sh-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 6px 16px -12px rgba(16, 24, 40, 0.2);
+  --sh-float: 0 8px 24px -10px rgba(16, 24, 40, 0.24), 0 1px 3px rgba(16, 24, 40, 0.06);
 
   --dock-h: 64px;
   --dock-gap: 12px;
@@ -91,7 +91,7 @@
     --tint-purple: rgba(94, 92, 230, 0.2);
 
     --sh-card: none;
-    --sh-float: 0 14px 40px -10px rgba(0, 0, 0, 0.7), 0 2px 8px rgba(0, 0, 0, 0.5);
+    --sh-float: 0 10px 30px -12px rgba(0, 0, 0, 0.7), 0 1px 3px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -115,21 +115,15 @@ body {
   overscroll-behavior: none;
 }
 
-/* 氛围光：让玻璃与卡片“浮”在页面之上 */
-body::before {
-  content: "";
-  position: fixed;
-  inset: -20% -10% auto -10%;
-  height: 90vh;
-  background:
-    radial-gradient(60% 55% at 50% 0%, var(--wash-1), transparent 70%),
-    radial-gradient(45% 40% at 88% 12%, var(--wash-2), transparent 72%);
-  pointer-events: none;
-  z-index: 0;
-}
+/* 氛围光：画在 .app 自己的背景上。
+   注意——不能用 position:fixed 的装饰层：iOS 滚动时固定层要跟着内容重新合成，
+   是实打实的掉帧来源。.app 本身不滚动（滚动都在 .view-scroll 里），
+   所以这张背景只栅格化一次，滚动过程零成本。 */
 
 h1, h2, h3, p { margin: 0; }
 button { font-family: inherit; font-size: inherit; color: inherit; }
+/* 去掉 iOS 点击的 300ms 延迟与双击缩放判定，点按更跟手 */
+button, a, input, select, textarea, [data-action] { touch-action: manipulation; }
 
 input, select, textarea {
   font-family: inherit;
@@ -166,25 +160,17 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background-color: var(--bg-page);
+  background-image:
+    radial-gradient(58% 40% at 50% -4%, var(--wash-1), transparent 72%),
+    radial-gradient(44% 32% at 94% 6%, var(--wash-2), transparent 74%);
+  background-repeat: no-repeat;
 }
 @media (min-width: 560px) {
-  body::before { z-index: 2; opacity: 0.7; } /* 宽屏时氛围光按 520 内容宽度收敛 */
-  .app::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    max-width: 520px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--bg-page);
-    z-index: -1;
-  }
-  .app {
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 24px 60px -20px rgba(16, 24, 40, 0.28);
-    border-radius: 0;
-    background: var(--bg-page);
-  }
+  body { background: #dcdce1; }
+  .app { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 24px 60px -20px rgba(16, 24, 40, 0.28); }
   @media (prefers-color-scheme: dark) {
+    body { background: #0b0b0c; }
     .app { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08); }
   }
 }
@@ -197,17 +183,21 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
+/* 顶栏：恒定高度的玻璃导航条。
+   大标题放在内容里（.page-header）随页面自然滚走，顶栏高度全程不变，
+   所以滚动时不会触发布局重排 —— 只做透明度/位移过渡。 */
 .page-head {
   position: sticky;
   top: 0;
   z-index: 6;
-  padding: calc(env(safe-area-inset-top, 0px) + 12px) 18px 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 18px 8px;
   background: var(--glass-nav);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
-  transition: padding 0.22s ease, box-shadow 0.22s ease;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  transform: translateZ(0); /* 独立成层，避免滚动时在主线程反复重绘 */
 }
 .page-head::after {
   content: "";
@@ -216,28 +206,38 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   height: 1px;
   background: var(--sep);
   opacity: 0;
-  transition: opacity 0.22s ease;
+  transition: opacity 0.18s ease;
 }
-/* 滚动后标题收缩成紧凑导航条（原生 App 的常见行为） */
-.page-head.is-compact { padding-top: calc(env(safe-area-inset-top, 0px) + 6px); padding-bottom: 6px; }
 .page-head.is-compact::after { opacity: 1; }
-.page-head.is-compact .page-title { font-size: 19px; letter-spacing: -0.2px; }
-.page-head.is-compact .page-kicker { display: none; }
 
-.page-head-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
-.page-kicker {
-  font-size: 13px;
-  color: var(--text-2);
-  transition: opacity 0.2s ease;
+.page-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 28px;
 }
+.nav-title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.page-head.is-compact .nav-title { opacity: 1; transform: none; }
+
+/* 内容区大标题 */
+.page-header { display: flex; flex-direction: column; gap: 2px; }
+.page-kicker { font-size: 13px; color: var(--text-2); }
 .page-title {
   font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.8px;
-  line-height: 1.15;
-  transition: font-size 0.22s ease, letter-spacing 0.22s ease;
+  line-height: 1.18;
 }
-/* 页面头右侧的动作按钮做成胶囊，接近系统「编辑」按钮 */
+
+/* 顶栏右侧的动作按钮做成胶囊，接近系统「编辑」按钮 */
 .page-head .text-btn {
   background: var(--tint-blue);
   color: var(--blue);
@@ -253,7 +253,7 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   padding: 6px 18px calc(var(--dock-clear) + 26px);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
 }
 /* 批量管理时底部多出操作栏，额外留出空间 */
 body.selecting .page-body {
@@ -569,8 +569,8 @@ body.selecting .page-body {
   padding: 12px 14px;
   border-radius: var(--r-card);
   background: var(--glass);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border: 0.5px solid var(--glass-border);
   box-shadow: var(--sh-float);
 }
@@ -752,8 +752,8 @@ body.selecting .page-body {
   display: grid; grid-template-columns: repeat(5, 1fr);
   border-radius: 999px;
   background: var(--glass);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
   border: 0.5px solid var(--glass-border);
   box-shadow: var(--sh-float);
   z-index: 30;
@@ -812,9 +812,7 @@ body.selecting .page-body {
 /* ------------------------ 浮层：sheet ------------------------ */
 .sheet-backdrop, .dialog-backdrop {
   position: fixed; inset: 0;
-  background: rgba(0, 0, 0, 0.32);
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.34); /* 只压暗，不做模糊：遮罩上的 backdrop-filter 是滚动期最贵的开销之一 */
   opacity: 0; transition: opacity 0.24s ease;
 }
 .sheet-backdrop { z-index: 40; }
@@ -858,8 +856,8 @@ body.selecting .page-body {
 .dialog {
   width: 100%; max-width: 300px;
   background: var(--glass-strong);
-  -webkit-backdrop-filter: saturate(180%) blur(30px);
-  backdrop-filter: saturate(180%) blur(30px);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
   border: 0.5px solid var(--glass-border);
   border-radius: 20px;
   padding: 20px 18px 10px;
@@ -895,8 +893,8 @@ body.selecting .page-body {
   left: 50%; transform: translateX(-50%) translateY(12px);
   bottom: calc(var(--dock-bottom) + var(--dock-h) + 16px);
   background: var(--glass-strong);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
   border: 0.5px solid var(--glass-border);
   color: var(--text);
   font-size: 14px; font-weight: 500;
