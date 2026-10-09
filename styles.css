@@ -248,6 +248,10 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   line-height: 1.2;
 }
 .page-head .text-btn:active { opacity: 0.6; }
+/* 顶栏右侧可放多个动作按钮（复习页：上一词 + 结束） */
+.head-actions { display: flex; align-items: center; gap: 8px; }
+.page-head .text-btn.ghost { background: var(--fill); color: var(--text); }
+.page-head .text-btn:disabled { opacity: 0.42; }
 
 .page-body {
   padding: 6px 18px calc(var(--dock-clear) + 26px);

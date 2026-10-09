@@ -368,6 +368,28 @@
 
   function isDueToday(w) { return w.level < 3 && w.review.due <= endOfToday(); }
 
+  /* 复习前的快照，配合 undoReview 实现「选错了回退一步」。
+     必须在 review() 之前取，且 review 对象要复制一份，否则会被原地改写。 */
+  function snapshot(id) {
+    const w = get(id);
+    if (!w) return null;
+    return { level: w.level, review: Object.assign({}, w.review) };
+  }
+
+  /* 撤销一次复习：还原熟悉度与复习进度，并删掉这次留下的日志 */
+  function undoReview(id, snap) {
+    const w = get(id);
+    if (!w || !snap || typeof snap.level !== 'number' || !snap.review) return null;
+    w.level = snap.level;
+    w.review = Object.assign({}, snap.review);
+    w.updatedAt = now();
+    for (let i = state.logs.length - 1; i >= 0; i--) {
+      if (state.logs[i].wordId === id) { state.logs.splice(i, 1); break; }
+    }
+    persist();
+    return w;
+  }
+
   function dueCount() { return state.words.filter(isDueToday).length; }
 
   function buildQueue(opts) {
@@ -638,7 +660,7 @@
     SCHEMA_VERSION, SECTIONS, PARTS, LEVELS, RESULTS, INTERVALS, SECTION_LABELS, LEVEL_LABELS,
     load, persist, all, get, list, recent, years, sectionsUsed,
     add, update, remove, setFavorite, setLevel,
-    review, buildQueue, dueCount, isDueToday, logsToday, logsForWord,
+    review, buildQueue, dueCount, isDueToday, logsToday, logsForWord, snapshot, undoReview,
     stats, exportJSON, exportPayload, parseImport, importWords, importText,
     addSamples, removeSamples, clear, storageSize,
     isMemoryOnly: () => memoryOnly,

@@ -280,6 +280,7 @@
 
     if (!s) {
       track.hidden = true; ptext.hidden = true; quit.hidden = true;
+      $('#reviewUndo').hidden = true;
       const due = V.dueCount();
       const unmastered = V.all().filter(w => w.level < 3).length;
       const years = V.years();
@@ -309,6 +310,9 @@
     }
 
     track.hidden = false; ptext.hidden = false; quit.hidden = false;
+    // 「上一词」在本轮有过作答后才可用（没有可撤销的就置灰，保持入口可见）
+    $('#reviewUndo').hidden = false;
+    $('#reviewUndo').disabled = s.history.length === 0;
 
     if (s.finished) {
       $('#reviewProgressFill').style.width = '100%';
@@ -330,6 +334,7 @@
           '<button class="btn btn-primary btn-block" data-action="start-review">' + (remaining ? '再来一轮待复习（' + remaining + '）' : '再复习一轮未掌握') + '</button>' +
           (unmastered > 0 ? '<button class="btn btn-block" data-action="review-all-unmastered">复习全部未掌握（' + unmastered + '）</button>' : '') +
           '<button class="btn btn-block" data-action="quit-review">返回</button>' +
+          '<p class="set-hint" style="text-align:center">选错了？点右上角「‹ 上一词」可以撤销上一次评分。</p>' +
         '</div>';
       return;
     }
@@ -398,7 +403,8 @@
       flipped: false,
       counts: { known: 0, fuzzy: 0, unknown: 0 },
       finished: false,
-      scope: scope
+      scope: scope,
+      history: []
     };
     setView('review');
   }
@@ -407,13 +413,32 @@
     const s = ui.session;
     if (!s || s.finished) return;
     const id = s.queue[s.index];
+    const snap = V.snapshot(id);   // 先存快照，撤销时要靠它还原
     const r = V.review(id, result);
-    if (r) s.counts[result]++;
+    if (r) {
+      s.counts[result]++;
+      s.history.push({ id: id, result: result, snapshot: snap });
+    }
     s.index++;
     s.flipped = false;
     if (s.index >= s.queue.length) s.finished = true;
     renderReview();
     renderTabBadge();
+  }
+
+  /* 回退一步：还原该词的熟悉度与复习进度、删掉这次记录，然后重新展示它 */
+  function undoReview() {
+    const s = ui.session;
+    if (!s || !s.history.length) return;
+    const last = s.history.pop();
+    V.undoReview(last.id, last.snapshot);
+    if (s.counts[last.result] > 0) s.counts[last.result]--;
+    s.index = Math.max(0, s.index - 1);
+    s.finished = false;
+    s.flipped = true;   // 已经看过答案，直接展示释义，方便重新评分
+    renderReview();
+    renderTabBadge();
+    toast('已回到上一词，可重新评分');
   }
 
   /* ============================== 统计 ============================== */
@@ -889,6 +914,7 @@
       renderReview();
     },
     'grade': (el) => grade(el.dataset.result),
+    'undo-review': undoReview,
 
     'go-words': () => setView('words'),
     'open-add-sheet': () => openSheet(null),

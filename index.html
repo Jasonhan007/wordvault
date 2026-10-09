@@ -131,7 +131,10 @@
       <header class="page-head">
         <div class="page-head-row">
           <span class="nav-title">复习</span>
-          <button class="text-btn" id="reviewQuit" data-action="quit-review" hidden>结束</button>
+          <div class="head-actions">
+            <button class="text-btn ghost" id="reviewUndo" data-action="undo-review" hidden>‹ 上一词</button>
+            <button class="text-btn" id="reviewQuit" data-action="quit-review" hidden>结束</button>
+          </div>
         </div>
         <div class="progress-track" id="reviewProgressTrack" hidden><div class="progress-fill" id="reviewProgressFill"></div></div>
         <p class="review-progress-text" id="reviewProgressText" hidden></p>

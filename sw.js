@@ -1,7 +1,7 @@
 /* WordVault · 离线缓存
    仅缓存 App 外壳（HTML/CSS/JS/图标），词库数据始终走 localStorage。
    改动静态文件后把 CACHE 版本号 +1 即可让旧缓存失效。 */
-const CACHE = 'wordvault-v2';
+const CACHE = 'wordvault-v3';
 const ASSETS = [
   './',
   './index.html',
