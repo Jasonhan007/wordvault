@@ -22,7 +22,11 @@
     { key: 'other', label: '其他' }
   ];
 
-  const PARTS = ['Part A', 'Part B', 'Part C'];
+  // 英语二阅读理解只有 Part A / Part B（Part C 是英语一的结构，不在选项里）
+  const PARTS = ['Part A', 'Part B'];
+  // 历史数据里可能存过 Part C：读取/导入时仍然接受，避免旧词条被静默清空
+  const LEGACY_PARTS = ['Part C'];
+  const ALL_PARTS = PARTS.concat(LEGACY_PARTS);
 
   // level: 0 陌生 1 模糊 2 认识 3 已掌握（掌握率与待复习都以它为准）
   const LEVELS = [
@@ -151,7 +155,7 @@
     w.meaning = clampText(raw.meaning, MAX_LEN.meaning);
     w.year = clampText(raw.year, MAX_LEN.year);
     w.section = SECTION_LABELS[raw.section] ? raw.section : '';
-    w.part = PARTS.indexOf(raw.part) >= 0 ? raw.part : '';
+    w.part = ALL_PARTS.indexOf(raw.part) >= 0 ? raw.part : '';
     w.passage = clampText(raw.passage, MAX_LEN.passage);
     w.paragraph = clampText(raw.paragraph, MAX_LEN.paragraph);
     w.sentence = clampText(raw.sentence, MAX_LEN.sentence);
@@ -177,7 +181,7 @@
     w.meaning = clampText(raw.meaning || raw.cn || raw.definition, MAX_LEN.meaning);
     w.year = clampText(raw.year, MAX_LEN.year);
     w.section = SECTION_LABELS[raw.section] ? raw.section : '';
-    w.part = PARTS.indexOf(raw.part) >= 0 ? raw.part : '';
+    w.part = ALL_PARTS.indexOf(raw.part) >= 0 ? raw.part : '';
     w.passage = clampText(raw.passage, MAX_LEN.passage);
     w.paragraph = clampText(raw.paragraph, MAX_LEN.paragraph);
     w.sentence = clampText(raw.sentence, MAX_LEN.sentence);
@@ -284,7 +288,7 @@
       if (typeof patch[k] !== 'undefined') w[k] = clampText(patch[k], MAX_LEN[k]);
     });
     if (typeof patch.section !== 'undefined') w.section = SECTION_LABELS[patch.section] ? patch.section : '';
-    if (typeof patch.part !== 'undefined') w.part = PARTS.indexOf(patch.part) >= 0 ? patch.part : '';
+    if (typeof patch.part !== 'undefined') w.part = ALL_PARTS.indexOf(patch.part) >= 0 ? patch.part : '';
     if (typeof patch.favorite !== 'undefined') w.favorite = !!patch.favorite;
     if (typeof patch.level !== 'undefined') setLevelValue(w, Number(patch.level));
     w.updatedAt = now();
@@ -657,7 +661,7 @@
 
   /* ---------------------------- 导出 API ---------------------------- */
   global.Vault = {
-    SCHEMA_VERSION, SECTIONS, PARTS, LEVELS, RESULTS, INTERVALS, SECTION_LABELS, LEVEL_LABELS,
+    SCHEMA_VERSION, SECTIONS, PARTS, LEGACY_PARTS, ALL_PARTS, LEVELS, RESULTS, INTERVALS, SECTION_LABELS, LEVEL_LABELS,
     load, persist, all, get, list, recent, years, sectionsUsed,
     add, update, remove, setFavorite, setLevel,
     review, buildQueue, dueCount, isDueToday, logsToday, logsForWord, snapshot, undoReview,

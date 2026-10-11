@@ -623,7 +623,16 @@
     $('#fMeaning').value = w ? w.meaning : '';
     $('#fYear').value = w ? w.year : '';
     $('#fSection').value = w ? w.section : '';
-    $('#fPart').value = w ? w.part : '';
+    // Part 选项：先清掉上一轮临时补的历史项，再按需补回当前词条用到的历史 Part
+    const partSel = $('#fPart');
+    $$('option', partSel).forEach(o => { if (o.value && V.PARTS.indexOf(o.value) < 0) o.remove(); });
+    if (w && w.part && V.PARTS.indexOf(w.part) < 0) {
+      const opt = document.createElement('option');
+      opt.value = w.part;
+      opt.textContent = w.part + '（历史）';
+      partSel.appendChild(opt);
+    }
+    partSel.value = w ? w.part : '';
     $('#fPassage').value = w ? w.passage : '';
     $('#fParagraph').value = w ? w.paragraph : '';
     $('#fSentence').value = w ? w.sentence : '';
