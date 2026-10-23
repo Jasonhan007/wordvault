@@ -601,7 +601,7 @@ body.selecting .page-body {
 #view-review .page-body { flex: 1; }
 #reviewBody .review-stage { flex: 1; justify-content: center; padding-bottom: 30px; }
 
-.flash-card { perspective: 1400px; min-height: 340px; cursor: pointer; }
+.flash-card { position: relative; perspective: 1400px; min-height: 340px; cursor: pointer; }
 .flash-inner {
   position: relative;
   width: 100%;
@@ -628,6 +628,25 @@ body.selecting .page-body {
   align-items: stretch;
   overflow-y: auto;
 }
+/* 只让首行给右上角收藏按钮让位，其余内容保持满宽，避免多出无谓换行 */
+.flash-back-word { padding-right: 44px; }
+/* 卡片右上角的收藏按钮：不在 .flash-inner 里，所以翻面时不会跟着转 */
+.card-fav {
+  position: absolute;
+  top: 12px; right: 12px;
+  z-index: 2;
+  width: 38px; height: 38px;
+  border: none; border-radius: 50%;
+  background: var(--fill);
+  color: var(--text-3);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.18s ease, color 0.18s ease;
+}
+.card-fav svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.card-fav.is-on { background: var(--tint-orange); color: var(--orange); }
+.card-fav.is-on svg { fill: var(--orange); stroke: var(--orange); }
+.card-fav:active { transform: scale(0.9); }
 .flash-word {
   font-size: 38px; font-weight: 700; letter-spacing: -1.2px;
   word-break: break-word; line-height: 1.1;

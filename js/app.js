@@ -372,6 +372,10 @@
               '<div class="flash-meta" style="justify-content:flex-start;margin-top:14px">' + metaLine(w) + '</div>' +
             '</div>' +
           '</div>' +
+          '<button class="card-fav' + (w.favorite ? ' is-on' : '') + '" data-action="toggle-review-fav" ' +
+            'aria-label="' + (w.favorite ? '取消收藏' : '加入收藏') + '" aria-pressed="' + (w.favorite ? 'true' : 'false') + '">' +
+            svgIcon('star') +
+          '</button>' +
         '</div>' +
         (s.flipped
           ? '<div class="review-actions">' +
@@ -983,6 +987,16 @@
       V.setFavorite([w.id], !w.favorite);
       renderAll();
       toast(w.favorite ? '已取消收藏' : '已加入收藏');
+    },
+    /* 复习卡片上的收藏：与单词本共用同一个 favorite 字段，改完即时重渲染（保留翻面状态） */
+    'toggle-review-fav': () => {
+      const s = ui.session;
+      if (!s || s.finished) return;
+      const w = V.get(s.queue[s.index]);
+      if (!w) return;
+      V.setFavorite([w.id], !w.favorite);
+      renderReview();
+      toast(w.favorite ? '已加入收藏' : '已取消收藏');
     },
     'clear-search': () => {
       $('#searchInput').value = '';
