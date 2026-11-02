@@ -606,8 +606,44 @@
     return active ? Number(active.dataset.level) : 0;
   }
   function toggleReadingRow() {
-    // Part / 文章编号只对阅读理解有意义，其他题型自动隐藏，避免填错
+    // 文章编号只对阅读理解有意义，其他题型自动隐藏，避免填错
     $('#readingRow').hidden = $('#fSection').value !== 'reading';
+  }
+
+  /* 英语二真题年份：2010 年开考，按新→旧排列；2026 为最近一次真题 */
+  const EXAM_YEARS = (function () {
+    const out = [];
+    for (let y = 2026; y >= 2010; y--) out.push(String(y));
+    return out;
+  })();
+  /* 阅读理解 Part A 的四篇文章（Part B 属于新题型，不在这个选项里） */
+  const PASSAGES = ['Text 1', 'Text 2', 'Text 3', 'Text 4'];
+
+  /* 下拉框回显：历史数据里可能有选项之外的年份/文章编号，
+     临时补一个「（历史）」选项，避免编辑旧词条时把原值清空 */
+  function setSelectValue(sel, value) {
+    const v = String(value || '');
+    Array.prototype.slice.call(sel.options).forEach(o => {
+      if (o.value && o.dataset.legacy === '1' && o.value !== v) o.remove();
+    });
+    const exists = Array.prototype.some.call(sel.options, o => o.value === v);
+    if (v && !exists) {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = v + '（历史）';
+      opt.dataset.legacy = '1';
+      sel.appendChild(opt);
+    }
+    sel.value = v;
+  }
+
+  /* 重复添加时的提示：带上已有词条的年份/题型，方便用户确认是哪一条 */
+  function duplicateMessage(w) {
+    const bits = [];
+    if (w.year) bits.push(w.year + ' 年');
+    if (w.section) bits.push(V.SECTION_LABELS[w.section]);
+    if (w.passage) bits.push(w.passage);
+    return '「' + w.word + '」已添加过' + (bits.length ? '（' + bits.join(' · ') + '）' : '');
   }
 
   function openSheet(id) {
@@ -621,25 +657,13 @@
       ? '创建于 ' + new Date(w.createdAt).toLocaleDateString('zh-CN') +
         ' · 已复习 ' + w.review.reviews + ' 次' +
         (w.review.lastReviewAt ? ' · 上次 ' + new Date(w.review.lastReviewAt).toLocaleDateString('zh-CN') : '')
-      : '年份、题型、例句等字段都可以留空，之后再补。';
+      : '年份、题型、文章编号等字段都可以留空，之后再补。';
 
     $('#fWord').value = w ? w.word : '';
     $('#fMeaning').value = w ? w.meaning : '';
-    $('#fYear').value = w ? w.year : '';
+    setSelectValue($('#fYear'), w ? w.year : '');
     $('#fSection').value = w ? w.section : '';
-    // Part 选项：先清掉上一轮临时补的历史项，再按需补回当前词条用到的历史 Part
-    const partSel = $('#fPart');
-    $$('option', partSel).forEach(o => { if (o.value && V.PARTS.indexOf(o.value) < 0) o.remove(); });
-    if (w && w.part && V.PARTS.indexOf(w.part) < 0) {
-      const opt = document.createElement('option');
-      opt.value = w.part;
-      opt.textContent = w.part + '（历史）';
-      partSel.appendChild(opt);
-    }
-    partSel.value = w ? w.part : '';
-    $('#fPassage').value = w ? w.passage : '';
-    $('#fParagraph').value = w ? w.paragraph : '';
-    $('#fSentence').value = w ? w.sentence : '';
+    setSelectValue($('#fPassage'), w ? w.passage : '');
     $('#fNote').value = w ? w.note : '';
     $('#fFavorite').checked = w ? w.favorite : false;
     setSegmentedLevel(w ? w.level : 0);
@@ -665,15 +689,21 @@
   function saveSheet() {
     const word = $('#fWord').value.trim();
     if (!word) { toast('请填写英文单词'); $('#fWord').focus(); return; }
+    // 已收录过就不再重复添加；编辑时排除自己
+    const dup = V.findByWord(word);
+    if (dup && dup.id !== ui.editingId) {
+      toast(duplicateMessage(dup));
+      $('#fWord').focus();
+      return;
+    }
+    const section = $('#fSection').value;
     const payload = {
       word: word,
       meaning: $('#fMeaning').value,
       year: $('#fYear').value,
-      section: $('#fSection').value,
-      part: $('#fPart').value,
-      passage: $('#fPassage').value,
-      paragraph: $('#fParagraph').value,
-      sentence: $('#fSentence').value,
+      section: section,
+      // 文章编号只对阅读理解有意义；其余题型不写入
+      passage: section === 'reading' ? $('#fPassage').value : '',
       note: $('#fNote').value,
       favorite: $('#fFavorite').checked,
       level: currentLevel()
@@ -958,6 +988,8 @@
       const meaningEl = $('#quickMeaning');
       const word = wordEl.value.trim();
       if (!word) { toast('请先填写英文单词'); wordEl.focus(); return; }
+      const dup = V.findByWord(word);
+      if (dup) { toast(duplicateMessage(dup)); wordEl.focus(); return; }
       const r = V.add({ word: word, meaning: meaningEl.value.trim() });
       if (!r) { toast('添加失败，请检查单词内容'); return; }
       wordEl.value = '';
@@ -1137,11 +1169,13 @@
   function init() {
     V.load();
 
-    // 下拉选择：题型 / Part
+    // 下拉选择：年份 / 题型 / 文章编号（年份与文章编号都只能选，不能手填）
+    $('#fYear').innerHTML = '<option value="">未填写</option>' +
+      EXAM_YEARS.map(y => '<option value="' + y + '">' + y + ' 年</option>').join('');
     $('#fSection').innerHTML = '<option value="">未填写</option>' +
       V.SECTIONS.map(s => '<option value="' + s.key + '">' + s.label + '</option>').join('');
-    $('#fPart').innerHTML = '<option value="">未填写</option>' +
-      V.PARTS.map(p => '<option value="' + p + '">' + p + '</option>').join('');
+    $('#fPassage').innerHTML = '<option value="">未填写</option>' +
+      PASSAGES.map(p => '<option value="' + p + '">' + p + '</option>').join('');
     buildLevelSegmented();
 
     // 图标统一注入（齿轮、书本等图形只在 ICON 里定义一次）

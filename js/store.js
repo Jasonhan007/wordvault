@@ -201,6 +201,14 @@
   function all() { return state.words.slice(); }
   function get(id) { return state.words.find(w => w.id === id) || null; }
 
+  /* 去重：按单词本身（忽略大小写与首尾空格）判断是否已经收录过。
+     同一年份/题型之外的重复也一并算重复，避免首页快速添加时重复录入。 */
+  function findByWord(word) {
+    const key = String(word || '').trim().toLowerCase();
+    if (!key) return null;
+    return state.words.find(w => String(w.word).trim().toLowerCase() === key) || null;
+  }
+
   function years() {
     const set = new Set();
     state.words.forEach(w => { if (w.year) set.add(w.year); });
@@ -662,7 +670,7 @@
   /* ---------------------------- 导出 API ---------------------------- */
   global.Vault = {
     SCHEMA_VERSION, SECTIONS, PARTS, LEGACY_PARTS, ALL_PARTS, LEVELS, RESULTS, INTERVALS, SECTION_LABELS, LEVEL_LABELS,
-    load, persist, all, get, list, recent, years, sectionsUsed,
+    load, persist, all, get, findByWord, list, recent, years, sectionsUsed,
     add, update, remove, setFavorite, setLevel,
     review, buildQueue, dueCount, isDueToday, logsToday, logsForWord, snapshot, undoReview,
     stats, exportJSON, exportPayload, parseImport, importWords, importText,

@@ -230,7 +230,9 @@
       <div class="field-row">
         <div class="field">
           <label for="fYear">年份</label>
-          <input id="fYear" type="text" inputmode="numeric" autocomplete="off" placeholder="如 2023">
+          <select id="fYear">
+            <option value="">未填写</option>
+          </select>
         </div>
         <div class="field">
           <label for="fSection">题型</label>
@@ -239,25 +241,11 @@
           </select>
         </div>
       </div>
-      <div class="field-row" id="readingRow" hidden>
-        <div class="field">
-          <label for="fPart">Part</label>
-          <select id="fPart">
-            <option value="">未填写</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="fPassage">文章编号</label>
-          <input id="fPassage" type="text" autocomplete="off" placeholder="如 Text 1">
-        </div>
-      </div>
-      <div class="field">
-        <label for="fParagraph">段落 / 位置</label>
-        <input id="fParagraph" type="text" autocomplete="off" placeholder="如 第 3 段第 2 句">
-      </div>
-      <div class="field">
-        <label for="fSentence">原文例句</label>
-        <textarea id="fSentence" rows="3" placeholder="粘贴该词所在的真题原句（可留空）"></textarea>
+      <div class="field" id="readingRow" hidden>
+        <label for="fPassage">文章编号</label>
+        <select id="fPassage">
+          <option value="">未填写</option>
+        </select>
       </div>
     </div>
 
