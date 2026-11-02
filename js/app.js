@@ -1,5 +1,5 @@
 /* ==========================================================================
-   WordVault · 视图与交互层（app.js）
+   Word · 视图与交互层（app.js）
    职责：底部导航路由 / 五个页面的渲染 / 单词编辑面板 / 复习流程 / 导入导出交互。
    所有数据读写都通过 window.Vault（store.js），本文件不直接碰 localStorage。
    ========================================================================== */
@@ -542,7 +542,7 @@
         ? '<div class="card" style="border:1px solid var(--red)"><p class="set-row-sub" style="color:var(--red)">当前浏览器无法写入本地存储（可能处于无痕模式），数据只在本次会话内有效，请及时导出备份。</p></div>'
         : '') +
       (V.hasLoadError()
-        ? '<div class="card" style="border:1px solid var(--red)"><p class="set-row-sub" style="color:var(--red)">检测到本地数据损坏，已备份原始内容到 wordvault.data.v1.broken，当前词库为空。</p></div>'
+        ? '<div class="card" style="border:1px solid var(--red)"><p class="set-row-sub" style="color:var(--red)">检测到本地数据损坏，已备份原始内容到 Word.data.v1.broken，当前词库为空。</p></div>'
         : '')
 
       + '<div class="block"><div class="block-head"><h2 class="block-title">数据概览</h2></div>' +
@@ -562,7 +562,7 @@
 
       + '<div class="block"><div class="block-head"><h2 class="block-title">导入</h2></div>' +
         '<div class="set-group">' +
-          row('import-file', '选择 JSON 文件导入', '支持 WordVault 导出的文件或词条数组') +
+          row('import-file', '选择 JSON 文件导入', '支持 Word 导出的文件或词条数组') +
           row('import-paste-toggle', '粘贴 JSON 文本导入', '从剪贴板粘贴内容导入') +
         '</div>' +
         '<div class="set-group" id="importPasteBox" hidden>' +
@@ -586,7 +586,7 @@
 
       + '<div class="block"><div class="block-head"><h2 class="block-title">关于</h2></div>' +
         '<div class="set-group"><div class="about-box">' +
-          '<b>WordVault v1.0</b><br>考研英语二真题单词收集器。<br>' +
+          '<b>Word v1.0</b><br>考研英语二真题单词收集器。<br>' +
           '纯前端网页，无后端、无登录、无网络请求，数据保存在本机 localStorage。' +
           'iPhone 上可「分享 → 添加到主屏幕」当作独立 App 使用，支持离线打开。' +
         '</div></div></div>';
@@ -610,10 +610,10 @@
     $('#readingRow').hidden = $('#fSection').value !== 'reading';
   }
 
-  /* 英语二真题年份：2010 年开考，按新→旧排列；2026 为最近一次真题 */
+  /* 英语二真题年份：2010 年开考，按新→旧排列；2025 为最近一次真题 */
   const EXAM_YEARS = (function () {
     const out = [];
-    for (let y = 2026; y >= 2010; y--) out.push(String(y));
+    for (let y = 2025; y >= 2010; y--) out.push(String(y));
     return out;
   })();
   /* 阅读理解 Part A 的四篇文章（Part B 属于新题型，不在这个选项里） */
@@ -1081,7 +1081,7 @@
     'bulk-master': () => { const ids = selectedIds(); if (!ids.length) return toast('请先勾选单词'); V.setLevel(ids, 3); renderAll(); toast('已设为已掌握 ' + ids.length + ' 个'); },
     'bulk-delete': bulkDelete,
 
-    'export-file': () => downloadJSON(V.exportJSON(), 'wordvault-' + stamp() + '.json'),
+    'export-file': () => downloadJSON(V.exportJSON(), 'word-' + stamp() + '.json'),
     'export-copy': () => copyText(V.exportJSON()),
     'import-file': () => $('#importFile').click(),
     'import-paste-toggle': () => {

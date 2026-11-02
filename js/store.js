@@ -1,5 +1,5 @@
 /* ==========================================================================
-   WordVault · 数据层（store.js）
+   Word · 数据层（store.js）
    职责：localStorage 持久化 / 词条增删改查 / 筛选 / 间隔复习(SRS) / 统计 /
          JSON 导入导出与格式校验。全部方法挂载在 window.Vault 上。
    数据结构 voir README 注释末尾的 SCHEMA 说明。
@@ -7,7 +7,7 @@
 (function (global) {
   'use strict';
 
-  const STORAGE_KEY = 'wordvault.data.v1';
+  const STORAGE_KEY = 'Word.data.v1';
   const SCHEMA_VERSION = 1;
   const DAY = 86400000;
   const RELEARN_MS = 10 * 60 * 1000; // “不认识”的词 10 分钟后可再次出现
@@ -496,7 +496,7 @@
   /* ------------------------- 导入 / 导出 ------------------------- */
   function exportPayload() {
     return {
-      app: 'WordVault',
+      app: 'Word',
       schemaVersion: SCHEMA_VERSION,
       exportedAt: new Date().toISOString(),
       count: state.words.length,
@@ -523,7 +523,7 @@
     let list;
     if (Array.isArray(data)) list = data;
     else if (data && typeof data === 'object' && Array.isArray(data.words)) list = data.words;
-    else return { ok: false, error: '格式不符：应为词条数组，或含 words 数组的对象（WordVault 导出的文件）' };
+    else return { ok: false, error: '格式不符：应为词条数组，或含 words 数组的对象（Word 导出的文件）' };
 
     const words = [];
     const invalid = [];
