@@ -606,21 +606,15 @@
     const active = $('#fLevel button.is-active');
     return active ? Number(active.dataset.level) : 0;
   }
-  function toggleReadingRow() {
-    // 文章编号只对阅读理解有意义，其他题型自动隐藏，避免填错
-    $('#readingRow').hidden = $('#fSection').value !== 'reading';
-  }
-
   /* 英语二真题年份：2010 年开考，按新→旧排列；2025 为最近一次真题 */
   const EXAM_YEARS = (function () {
     const out = [];
     for (let y = 2025; y >= 2010; y--) out.push(String(y));
     return out;
   })();
-  /* 阅读理解 Part A 的四篇文章（Part B 属于新题型，不在这个选项里） */
-  const PASSAGES = ['Text 1', 'Text 2', 'Text 3', 'Text 4'];
+  /* 添加面板已不再选文章编号：历史数据里的 passage 仍会显示在列表与复习卡片上 */
 
-  /* 下拉框回显：历史数据里可能有选项之外的年份/文章编号，
+  /* 下拉框回显：历史数据里可能有选项之外的年份，
      临时补一个「（历史）」选项，避免编辑旧词条时把原值清空 */
   function setSelectValue(sel, value) {
     const v = String(value || '');
@@ -658,17 +652,15 @@
       ? '创建于 ' + new Date(w.createdAt).toLocaleDateString('zh-CN') +
         ' · 已复习 ' + w.review.reviews + ' 次' +
         (w.review.lastReviewAt ? ' · 上次 ' + new Date(w.review.lastReviewAt).toLocaleDateString('zh-CN') : '')
-      : '年份、题型、文章编号等字段都可以留空，之后再补。';
+      : '年份、题型等字段都可以留空，之后再补。';
 
     $('#fWord').value = w ? w.word : '';
     $('#fMeaning').value = w ? w.meaning : '';
     setSelectValue($('#fYear'), w ? w.year : '');
     $('#fSection').value = w ? w.section : '';
-    setSelectValue($('#fPassage'), w ? w.passage : '');
     $('#fNote').value = w ? w.note : '';
     $('#fFavorite').checked = w ? w.favorite : false;
     setSegmentedLevel(w ? w.level : 0);
-    toggleReadingRow();
 
     const sheet = $('#wordSheet');
     const backdrop = $('#sheetBackdrop');
@@ -703,8 +695,7 @@
       meaning: $('#fMeaning').value,
       year: $('#fYear').value,
       section: section,
-      // 文章编号只对阅读理解有意义；其余题型不写入
-      passage: section === 'reading' ? $('#fPassage').value : '',
+      // 文章编号已从表单移除：新录入不写 passage，编辑旧词条时也不覆盖原有值
       note: $('#fNote').value,
       favorite: $('#fFavorite').checked,
       level: currentLevel()
@@ -1137,10 +1128,6 @@
     ACTIONS[action](el, e);
   });
 
-  document.addEventListener('change', (e) => {
-    if (e.target.id === 'fSection') toggleReadingRow();
-  });
-
   document.addEventListener('input', (e) => {
     if (e.target.id === 'searchInput') {
       ui.filter.q = e.target.value.trim();
@@ -1170,13 +1157,11 @@
   function init() {
     V.load();
 
-    // 下拉选择：年份 / 题型 / 文章编号（年份与文章编号都只能选，不能手填）
+    // 下拉选择：年份 / 题型（都只能选，不能手填）
     $('#fYear').innerHTML = '<option value="">未填写</option>' +
       EXAM_YEARS.map(y => '<option value="' + y + '">' + y + ' 年</option>').join('');
     $('#fSection').innerHTML = '<option value="">未填写</option>' +
       V.SECTIONS.map(s => '<option value="' + s.key + '">' + s.label + '</option>').join('');
-    $('#fPassage').innerHTML = '<option value="">未填写</option>' +
-      PASSAGES.map(p => '<option value="' + p + '">' + p + '</option>').join('');
     buildLevelSegmented();
 
     // 图标统一注入（齿轮、书本等图形只在 ICON 里定义一次）
