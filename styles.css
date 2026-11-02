@@ -222,46 +222,28 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   overscroll-behavior: contain;
 }
 
-/* 顶栏：恒定高度的玻璃导航条。
-   大标题放在内容里（.page-header）随页面自然滚走，顶栏高度全程不变，
-   所以滚动时不会触发布局重排 —— 只做透明度/位移过渡。 */
+/* 顶栏：不再做吸顶磨砂条，只保留一个轻量的操作行（按钮），随页面一起滚走。
+   大标题在内容里（.page-header），滚动时没有任何悬浮层压在内容上。 */
 .page-head {
-  position: sticky;
-  top: 0;
-  z-index: 6;
-  padding: calc(env(safe-area-inset-top, 0px) + 10px) 20px 10px;
-  background: var(--glass-nav);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  backdrop-filter: blur(28px) saturate(180%);
-  transform: translateZ(0); /* 独立成层，避免滚动时在主线程反复重绘 */
+  position: static;
+  padding: calc(env(safe-area-inset-top, 0px) + 8px) 0 0;
 }
-.page-head::after {
-  content: "";
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--sep) 18%, var(--sep) 82%, transparent);
-  opacity: 0;
-  transition: opacity 0.18s ease;
-}
-.page-head.is-compact::after { opacity: 1; }
 
 .page-head-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
-  min-height: 30px;
+  min-height: 34px;
 }
-.nav-title {
-  font-size: 17px;
-  font-weight: 650;
-  letter-spacing: -0.3px;
-  opacity: 0;
-  transform: translateY(6px);
-  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+/* 导航标题只给读屏用（屏幕顶部不再显示磨砂标题） */
+.page-head .nav-title {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden; clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
-.page-head.is-compact .nav-title { opacity: 1; transform: none; }
 
 /* 内容区大标题 */
 .page-header { display: flex; flex-direction: column; gap: 3px; }
@@ -273,7 +255,8 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
   line-height: 1.16;
 }
 
-/* 顶栏右侧的动作按钮做成胶囊，接近系统「编辑」按钮 */
+/* 顶栏按钮：与大标题（.page-title）同一条基线，右侧对齐，读起来像标题旁的动作 */
+.view-scroll > .page-head { margin-bottom: -46px; }
 .page-head .text-btn {
   background: var(--glass-strong);
   border: 1px solid var(--glass-border);

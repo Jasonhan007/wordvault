@@ -249,7 +249,7 @@
     let html;
     if (total === 0) {
       html = emptyState(svgIcon('book'), '单词本还是空的',
-        '点右上角「选择」旁的加号，或到首页快速添加第一个真题单词。',
+        '到首页「快速添加」录入第一个真题单词，或先用下面的按钮看看示例。',
         '<button class="btn btn-primary" data-action="open-add-sheet">添加单词</button>' +
         '<button class="btn" data-action="add-samples">加载示例数据</button>');
     } else if (!rows.length) {
@@ -264,6 +264,7 @@
     document.body.classList.toggle('selecting', ui.selectMode);
     $('#bulkBar').hidden = !ui.selectMode;
     $('#selectToggle').textContent = ui.selectMode ? '完成' : '选择';
+    $('#selectToggle').hidden = total === 0 && !ui.selectMode; // 空单词本时没有可批量操作的词条
     $('#wordsTitle').textContent = ui.selectMode ? '批量管理' : '单词本';
     $('#wordsNavTitle').textContent = ui.selectMode ? '批量管理' : '单词本';
     $('#bulkCount').textContent = '已选 ' + ui.selection.size + ' 项' + (ui.selectMode ? '（点击词条勾选）' : '');
@@ -1206,18 +1207,6 @@
     // 底部导航与其余按钮已通过事件委托绑定；初始化路由
     const hashView = (location.hash || '').replace('#/', '');
     setView(VIEWS.indexOf(hashView) >= 0 ? hashView : 'home', { silent: true });
-
-    // 滚动后顶栏顶部的标题淡入；用滞回阈值避免在临界点反复触发
-    $$('.view-scroll').forEach(scroller => {
-      const head = scroller.querySelector('.page-head');
-      if (!head) return;
-      scroller.addEventListener('scroll', () => {
-        const top = scroller.scrollTop;
-        const compact = head.classList.contains('is-compact');
-        if (!compact && top > 28) head.classList.add('is-compact');
-        else if (compact && top < 10) head.classList.remove('is-compact');
-      }, { passive: true });
-    });
 
     window.addEventListener('resize', positionDockPill);
     window.addEventListener('orientationchange', () => setTimeout(positionDockPill, 120));
