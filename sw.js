@@ -1,5 +1,5 @@
 ﻿/* Word · 离线缓存
-   仅缓存 App 外壳（HTML/CSS/JS/图标），词库数据始终走 localStorage。
+   缓存 App 外壳（HTML/CSS/JS/图标）；词库 600KB，改为首次使用时按需缓存。
    改动静态文件后把 CACHE 版本号 +1 即可让旧缓存失效。 */
 const CACHE = 'Word-v8';
 const ASSETS = [
@@ -8,7 +8,6 @@ const ASSETS = [
   './styles.css?v=8',
   './js/store.js?v=8',
   './js/app.js?v=8',
-  './js/dict.js',
   './manifest.json',
   './icon.svg',
   './icon-180.png',
@@ -45,4 +44,3 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
-
