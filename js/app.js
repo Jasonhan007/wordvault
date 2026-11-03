@@ -46,6 +46,85 @@
     if (w.paragraph) bits.push(w.paragraph);
     return bits.map(b => '<span>' + esc(b) + '</span>').join('');
   }
+
+  /* ---------------------- 词库：输入单词自动填释义 ---------------------- */
+  /* dict.js 有 600KB 左右，按需加载：第一次点进单词输入框时才下载，
+     之后由 Service Worker 缓存，离线也能用。 */
+  let dictPromise = null;
+  function loadDict() {
+    if (window.WORD_DICT) return Promise.resolve(window.WORD_DICT);
+    if (!dictPromise) {
+      dictPromise = new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = 'js/dict.js';
+        s.onload = () => resolve(window.WORD_DICT || {});
+        s.onerror = () => { dictPromise = null; resolve({}); };
+        document.head.appendChild(s);
+      });
+    }
+    return dictPromise;
+  }
+  function dictKey(word) {
+    return String(word || '').trim().toLowerCase()
+      .replace(/[’]/g, "'")
+      .replace(/[.,;:!?]+$/, '')
+      .replace(/\s+/g, ' ');
+  }
+  function lookupMeaning(word) {
+    const dict = window.WORD_DICT;
+    return dict ? (dict[dictKey(word)] || '') : '';
+  }
+
+  const AUTOFILL = {
+    sheet: { input: '#fWord', meaning: '#fMeaning', hint: '#fMeaningHint', timer: 0 },
+    quick: { input: '#quickWord', meaning: '#quickMeaning', hint: '#quickMeaningHint', timer: 0 }
+  };
+  function setFieldHint(sel, text, warn) {
+    const el = $(sel);
+    if (!el) return;
+    el.textContent = text || '';
+    el.hidden = !text;
+    el.classList.toggle('is-warn', !!warn);
+  }
+  function isAutoFilled(el) { return el.dataset.auto === '1'; }
+  function autofillMeaning(key) {
+    const cfg = AUTOFILL[key];
+    const input = $(cfg.input), meaningEl = $(cfg.meaning);
+    if (!input || !meaningEl) return;
+    if (key === 'sheet' && ui.editingId) return; // 编辑旧词条时不要覆盖已有释义
+    const word = input.value.trim();
+    if (!word) {
+      if (isAutoFilled(meaningEl)) { meaningEl.value = ''; meaningEl.dataset.auto = ''; }
+      setFieldHint(cfg.hint, '');
+      return;
+    }
+    // 只有“释义为空”或“上次是自动填的”才写，绝不覆盖用户手打的内容
+    if (meaningEl.value.trim() && !isAutoFilled(meaningEl)) { setFieldHint(cfg.hint, ''); return; }
+
+    const hit = lookupMeaning(word);
+    if (hit) {
+      meaningEl.value = hit;
+      meaningEl.dataset.auto = '1';
+      setFieldHint(cfg.hint, '已从词库自动填入，可直接修改');
+      return;
+    }
+    if (isAutoFilled(meaningEl)) { meaningEl.value = ''; meaningEl.dataset.auto = ''; }
+    if (!meaningEl.value.trim() && /[a-z]/i.test(word)) {
+      setFieldHint(cfg.hint, '词库暂未收录，请手动填写', true);
+    } else {
+      setFieldHint(cfg.hint, '');
+    }
+  }
+  function scheduleAutofill(key) {
+    const cfg = AUTOFILL[key];
+    const hint = $(cfg.hint);
+    if (!window.WORD_DICT && hint && !$(cfg.meaning).value.trim()) setFieldHint(cfg.hint, '正在加载词库…');
+    clearTimeout(cfg.timer);
+    cfg.timer = setTimeout(() => {
+      loadDict().then(() => autofillMeaning(key));
+    }, 220);
+  }
+
   /* 图标：全部 24×24 网格、只描边（stroke 由 CSS 继承）、linejoin/linecap 为 round。
      统一在 app.js 定义，Dock 与内容区共用同一份，避免两处图形走形。 */
   const ICON = {
@@ -169,11 +248,6 @@
     ].map(item => '<div class="stat-item"><div class="v">' + item.v + '</div><div class="k">' + item.k + '</div></div>').join('');
 
     renderHomeRing(s);
-
-    const recent = V.recent(5);
-    $('#homeRecent').innerHTML = recent.length
-      ? '<div class="list-card">' + recent.map(wordRow).join('') + '</div>'
-      : emptyState(svgIcon('book'), '还没有单词', '在上面的输入框里填一个词，就能开始建立自己的真题词库。');
   }
 
   /* 今日进度环：已完成 = 今日已复习次数，总量 = 已完成 + 仍待复习 */
@@ -614,9 +688,9 @@
   })();
   /* 添加面板已不再选文章编号：历史数据里的 passage 仍会显示在列表与复习卡片上 */
 
-  /* 下拉框回显：历史数据里可能有选项之外的年份，
+  /* 下拉框回显：历史数据里可能有选项之外的年份/题型，
      临时补一个「（历史）」选项，避免编辑旧词条时把原值清空 */
-  function setSelectValue(sel, value) {
+  function setSelectValue(sel, value, legacyLabel) {
     const v = String(value || '');
     Array.prototype.slice.call(sel.options).forEach(o => {
       if (o.value && o.dataset.legacy === '1' && o.value !== v) o.remove();
@@ -625,7 +699,7 @@
     if (v && !exists) {
       const opt = document.createElement('option');
       opt.value = v;
-      opt.textContent = v + '（历史）';
+      opt.textContent = (legacyLabel || v) + '（历史）';
       opt.dataset.legacy = '1';
       sel.appendChild(opt);
     }
@@ -656,8 +730,10 @@
 
     $('#fWord').value = w ? w.word : '';
     $('#fMeaning').value = w ? w.meaning : '';
+    $('#fMeaning').dataset.auto = '';
+    setFieldHint('#fMeaningHint', '');
     setSelectValue($('#fYear'), w ? w.year : '');
-    $('#fSection').value = w ? w.section : '';
+    setSelectValue($('#fSection'), w ? w.section : '', w ? V.SECTION_LABELS[w.section] : '');
     $('#fNote').value = w ? w.note : '';
     $('#fFavorite').checked = w ? w.favorite : false;
     setSegmentedLevel(w ? w.level : 0);
@@ -982,10 +1058,19 @@
       if (!word) { toast('请先填写英文单词'); wordEl.focus(); return; }
       const dup = V.findByWord(word);
       if (dup) { toast(duplicateMessage(dup)); wordEl.focus(); return; }
-      const r = V.add({ word: word, meaning: meaningEl.value.trim() });
+      const r = V.add({
+        word: word,
+        meaning: meaningEl.value.trim(),
+        year: $('#quickYear').value,
+        section: $('#quickSection').value
+      });
       if (!r) { toast('添加失败，请检查单词内容'); return; }
       wordEl.value = '';
       meaningEl.value = '';
+      meaningEl.dataset.auto = '';
+      $('#quickYear').value = '';
+      $('#quickSection').value = '';
+      setFieldHint('#quickMeaningHint', '');
       wordEl.focus();
       renderAll();
       toast('已添加：' + r.word);
@@ -1129,12 +1214,25 @@
   });
 
   document.addEventListener('input', (e) => {
-    if (e.target.id === 'searchInput') {
+    const id = e.target.id;
+    if (id === 'fWord') scheduleAutofill('sheet');
+    else if (id === 'quickWord') scheduleAutofill('quick');
+    else if (id === 'fMeaning' || id === 'quickMeaning') {
+      // 用户亲自改过释义后，就不再让词库覆盖
+      e.target.dataset.auto = '';
+      setFieldHint(id === 'fMeaning' ? '#fMeaningHint' : '#quickMeaningHint', '');
+    }
+    if (id === 'searchInput') {
       ui.filter.q = e.target.value.trim();
       $('#searchClear').hidden = !e.target.value;
       clearTimeout(ACTIONS._searchTimer);
       ACTIONS._searchTimer = setTimeout(renderWords, 140);
     }
+  });
+
+  // 第一次点进单词输入框时预取词库，避免打字时才开始下载
+  document.addEventListener('focusin', (e) => {
+    if (e.target.id === 'fWord' || e.target.id === 'quickWord') loadDict();
   });
 
   document.addEventListener('keydown', (e) => {
@@ -1144,6 +1242,7 @@
     }
     if (e.key === 'Enter' && e.target.id === 'quickWord') {
       e.preventDefault();
+      if (window.WORD_DICT) autofillMeaning('quick');
       if ($('#quickMeaning').value.trim()) ACTIONS['quick-add']();
       else $('#quickMeaning').focus();
     }
@@ -1158,10 +1257,14 @@
     V.load();
 
     // 下拉选择：年份 / 题型（都只能选，不能手填）
-    $('#fYear').innerHTML = '<option value="">未填写</option>' +
+    const yearOptions = '<option value="">未填写</option>' +
       EXAM_YEARS.map(y => '<option value="' + y + '">' + y + ' 年</option>').join('');
-    $('#fSection').innerHTML = '<option value="">未填写</option>' +
+    const sectionOptions = '<option value="">未填写</option>' +
       V.SECTIONS.map(s => '<option value="' + s.key + '">' + s.label + '</option>').join('');
+    $('#fYear').innerHTML = yearOptions;
+    $('#fSection').innerHTML = sectionOptions;
+    $('#quickYear').innerHTML = yearOptions;
+    $('#quickSection').innerHTML = sectionOptions;
     buildLevelSegmented();
 
     // 图标统一注入（齿轮、书本等图形只在 ICON 里定义一次）

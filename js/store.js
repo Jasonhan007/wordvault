@@ -18,9 +18,10 @@
     { key: 'cloze', label: '完形填空' },
     { key: 'newtype', label: '新题型' },
     { key: 'translation', label: '翻译' },
-    { key: 'writing', label: '写作' },
-    { key: 'other', label: '其他' }
+    { key: 'writing', label: '写作' }
   ];
+  // 早期版本有过「其他」题型：选项里已去掉，但旧词条仍然保留这个 key 并正常显示
+  const LEGACY_SECTION_LABELS = { other: '其他' };
 
   // 英语二阅读理解只有 Part A / Part B（Part C 是英语一的结构，不在选项里）
   const PARTS = ['Part A', 'Part B'];
@@ -44,6 +45,7 @@
   const MAX_LEN = { word: 80, meaning: 300, sentence: 1200, note: 1500, year: 12, passage: 40, paragraph: 60 };
 
   const SECTION_LABELS = SECTIONS.reduce((m, s) => { m[s.key] = s.label; return m; }, {});
+  Object.assign(SECTION_LABELS, LEGACY_SECTION_LABELS);
   const LEVEL_LABELS = LEVELS.reduce((m, l) => { m[l.value] = l.label; return m; }, {});
 
   /* ---------------------------- 内部状态 ---------------------------- */

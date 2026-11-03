@@ -60,17 +60,25 @@
             <div class="field">
               <label for="quickMeaning">中文释义</label>
               <input id="quickMeaning" type="text" autocomplete="off" placeholder="如 adj. 可持续的">
+              <p class="field-hint" id="quickMeaningHint" hidden></p>
+            </div>
+            <p class="form-section-title">真题出处</p>
+            <div class="field-row">
+              <div class="field">
+                <label for="quickYear">年份</label>
+                <select id="quickYear">
+                  <option value="">未填写</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="quickSection">题型</label>
+                <select id="quickSection">
+                  <option value="">未填写</option>
+                </select>
+              </div>
             </div>
             <button class="btn btn-primary btn-block" data-action="quick-add">添加到单词本</button>
           </div>
-        </section>
-
-        <section class="block">
-          <div class="block-head">
-            <h2 class="block-title">最近添加</h2>
-            <button class="text-btn" data-action="go-words">查看全部</button>
-          </div>
-          <div id="homeRecent"></div>
         </section>
       </div>
     </div>
@@ -222,6 +230,7 @@
       <div class="field">
         <label for="fMeaning">中文释义</label>
         <input id="fMeaning" type="text" autocomplete="off" placeholder="如 adj. 可持续的；能维持的">
+        <p class="field-hint" id="fMeaningHint" hidden></p>
       </div>
     </div>
 

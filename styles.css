@@ -442,6 +442,10 @@ body.selecting .page-body {
 .field-row .field { flex: 1; border-bottom: none; padding: 12px 0; }
 .field-inline { flex-direction: row; align-items: center; justify-content: space-between; }
 .field-inline > label { font-size: 15.5px; color: var(--text); }
+.field-hint { margin: -1px 0 0; font-size: 12px; line-height: 1.45; color: var(--text-3); }
+.field-hint.is-warn { color: var(--orange, #c7841a); }
+.form-card > .field-row { border-bottom: none; }
+.form-card > .form-section-title { padding: 4px 2px 0; }
 
 /* 开关 */
 .switch { display: inline-flex; position: relative; }
