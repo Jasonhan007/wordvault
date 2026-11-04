@@ -48,7 +48,7 @@
   }
 
   /* ---------------------- 词库：输入单词自动填释义 ---------------------- */
-  /* dict.js 有 600KB 左右，按需加载：第一次点进单词输入框时才下载，
+  /* dict.js 约 400KB（27 版红宝书精简释义），按需加载：第一次点进单词输入框时才下载，
      之后由 Service Worker 缓存，离线也能用。 */
   let dictPromise = null;
   function loadDict() {
@@ -56,7 +56,7 @@
     if (!dictPromise) {
       dictPromise = new Promise(resolve => {
         const s = document.createElement('script');
-        s.src = 'js/dict.js';
+        s.src = 'js/dict.js?v=9';
         s.onload = () => resolve(window.WORD_DICT || {});
         s.onerror = () => { dictPromise = null; resolve({}); };
         document.head.appendChild(s);
@@ -105,12 +105,12 @@
     if (hit) {
       meaningEl.value = hit;
       meaningEl.dataset.auto = '1';
-      setFieldHint(cfg.hint, '已从词库自动填入，可直接修改');
+      setFieldHint(cfg.hint, '已按 27 版红宝书自动填入，可直接修改');
       return;
     }
     if (isAutoFilled(meaningEl)) { meaningEl.value = ''; meaningEl.dataset.auto = ''; }
     if (!meaningEl.value.trim() && /[a-z]/i.test(word)) {
-      setFieldHint(cfg.hint, '词库暂未收录，请手动填写', true);
+      setFieldHint(cfg.hint, '红宝书词库暂未收录，请手动填写', true);
     } else {
       setFieldHint(cfg.hint, '');
     }
@@ -118,7 +118,7 @@
   function scheduleAutofill(key) {
     const cfg = AUTOFILL[key];
     const hint = $(cfg.hint);
-    if (!window.WORD_DICT && hint && !$(cfg.meaning).value.trim()) setFieldHint(cfg.hint, '正在加载词库…');
+    if (!window.WORD_DICT && hint && !$(cfg.meaning).value.trim()) setFieldHint(cfg.hint, '正在加载红宝书词库…');
     clearTimeout(cfg.timer);
     cfg.timer = setTimeout(() => {
       loadDict().then(() => autofillMeaning(key));
