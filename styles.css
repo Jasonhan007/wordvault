@@ -257,6 +257,8 @@ input[type="search"]::-webkit-search-cancel-button { display: none; }
 
 /* 顶栏按钮：与大标题（.page-title）同一条基线，右侧对齐，读起来像标题旁的动作 */
 .view-scroll > .page-head { margin-bottom: -46px; }
+/* 复习页没有大标题，不能靠负边距上提，否则总结卡片会压住进度文字 */
+#view-review .page-head { margin-bottom: 0; }
 .page-head .text-btn {
   background: var(--glass-strong);
   border: 1px solid var(--glass-border);
@@ -356,7 +358,7 @@ body.selecting .page-body {
   box-shadow: 0 26px 48px -26px rgba(70, 80, 255, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   overflow: hidden;
 }
-.hero-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 auto; }
+.hero-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 0; }
 .hero-label { font-size: 14px; font-weight: 500; color: rgba(255, 255, 255, 0.78); }
 .hero-number {
   font-size: 54px;
@@ -642,7 +644,7 @@ body.selecting .page-body {
   height: 100%; background: var(--accent-grad); border-radius: 3px;
   transition: width 0.35s cubic-bezier(0.32, 0.72, 0, 1);
 }
-.review-progress-text { font-size: 12px; color: var(--text-2); margin-top: 7px; }
+.review-progress-text { font-size: 12px; color: var(--text-2); margin-top: 7px; padding: 0 20px; }
 
 .review-stage { display: flex; flex-direction: column; gap: 16px; }
 
@@ -746,6 +748,15 @@ body.selecting .page-body {
 .grade-known { background: linear-gradient(160deg, var(--tint-green), rgba(31, 191, 103, 0.05)); border-color: rgba(31, 191, 103, 0.16); color: var(--green); }
 
 .review-summary { display: flex; flex-direction: column; gap: 16px; }
+/* 复习首页的数字卡是白底，hero 的字色要改成深色，否则白字看不见 */
+.review-hero .hero-label, .review-hero .hero-sub { color: var(--text-2); }
+.review-hero .hero-number { color: var(--text); }
+/* 320px 小屏：缩小进度环，避免它被挤到第二行 */
+@media (max-width: 360px) {
+  .ring { width: 64px; height: 64px; }
+  .hero-card { gap: 12px; padding: 20px; }
+  .hero-number { font-size: 46px; }
+}
 .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .summary-cell {
   background: var(--card-grad); border: 1px solid var(--card-border);

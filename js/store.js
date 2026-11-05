@@ -44,6 +44,10 @@
 
   const MAX_LEN = { word: 80, meaning: 300, sentence: 1200, note: 1500, year: 12, passage: 40, paragraph: 60 };
 
+  // 本机自动备份：与主数据分开存，最多保留最近 3 份，用于误删/误导入后的恢复
+  const BACKUP_KEY = 'Word.backups.v1';
+  const MAX_BACKUPS = 3;
+
   const SECTION_LABELS = SECTIONS.reduce((m, s) => { m[s.key] = s.label; return m; }, {});
   Object.assign(SECTION_LABELS, LEGACY_SECTION_LABELS);
   const LEVEL_LABELS = LEVELS.reduce((m, l) => { m[l.value] = l.label; return m; }, {});
@@ -96,6 +100,7 @@
       memoryOnly = false;
       state.loadError = true;
     }
+    maybeDailyBackup();
     return state;
   }
 
@@ -225,13 +230,20 @@
   function sectionsUsed() {
     const set = new Set();
     state.words.forEach(w => { if (w.section) set.add(w.section); });
-    return SECTIONS.filter(s => set.has(s.key)).map(s => s.key);
+    // 旧数据里的「其他」也要出现在筛选里，否则这些词条无法被单独筛出
+    const known = SECTIONS.map(s => s.key);
+    const legacy = Array.from(set).filter(k => known.indexOf(k) === -1 && SECTION_LABELS[k]);
+    return SECTIONS.filter(s => set.has(s.key)).map(s => s.key).concat(legacy);
   }
 
   function matches(w, f) {
     if (f.q) {
       const q = f.q.toLowerCase();
-      const hay = (w.word + ' ' + w.meaning + ' ' + w.sentence + ' ' + w.note + ' ' + w.year + ' ' + w.passage).toLowerCase();
+      // 搜索也认题型中文名、Part 与段落，输入“阅读”“Part A”都能命中
+      const hay = [
+        w.word, w.meaning, w.sentence, w.note, w.year, w.passage, w.paragraph, w.part,
+        SECTION_LABELS[w.section] || ''
+      ].join(' ').toLowerCase();
       if (hay.indexOf(q) === -1) return false;
     }
     if (f.year && f.year !== 'all' && w.year !== f.year) return false;
@@ -325,6 +337,8 @@
   function remove(ids) {
     const set = new Set(ids);
     const before = state.words.length;
+    // 批量删除风险高，先留一份备份
+    if (set.size >= 3) makeBackup('before-delete');
     state.words = state.words.filter(w => !set.has(w.id));
     persist();
     return before - state.words.length;
@@ -380,7 +394,9 @@
     return w;
   }
 
-  function isDueToday(w) { return w.level < 3 && w.review.due <= endOfToday(); }
+  /* 到期判断用「现在」而不是「今天结束」：标记“不认识”的词 10 分钟后才到期，
+     若按整天算会立刻被下一轮抽到，和界面上“10 分钟后再来”的说明不符。 */
+  function isDueToday(w) { return w.level < 3 && w.review.due <= now(); }
 
   /* 复习前的快照，配合 undoReview 实现「选错了回退一步」。
      必须在 review() 之前取，且 review 对象要复制一份，否则会被原地改写。 */
@@ -431,7 +447,7 @@
   /* ---------------------------- 统计 ---------------------------- */
   function stats() {
     const total = state.words.length;
-    let mastered = 0, due = 0, favorites = 0, samples = 0, fresh = 0;
+    let mastered = 0, due = 0, favorites = 0, samples = 0, fresh = 0, freshDue = 0;
     const byYear = new Map();
     const bySection = new Map();
     const byLevel = [0, 0, 0, 0];
@@ -441,7 +457,11 @@
       if (isDueToday(w)) due++;
       if (w.favorite) favorites++;
       if (w.isSample) samples++;
-      if (w.review.reviews === 0) fresh++;
+      if (w.review.reviews === 0) {
+        fresh++;
+        // 首页“其中 N 个是新词”只统计今天真正要复习的新词，不能把已排到以后的新词也算进去
+        if (isDueToday(w)) freshDue++;
+      }
       byLevel[w.level]++;
       const y = w.year || '未填年份';
       byYear.set(y, (byYear.get(y) || 0) + 1);
@@ -485,6 +505,7 @@
       favorites,
       samples,
       fresh,
+      freshDue,
       byYear: yearRows,
       bySection: sectionRows,
       byLevel: LEVELS.map((l, i) => ({ value: l.value, label: l.label, count: byLevel[i] })),
@@ -545,7 +566,12 @@
   function importWords(words, mode) {
     const m = mode || 'merge';
     let added = 0, updated = 0, skipped = 0;
-    if (m === 'replace') { state.words = []; }
+    if (m === 'replace') {
+      makeBackup('before-import-replace');
+      state.words = [];
+      // 复习记录属于旧词条，替换时必须一起清空，否则统计会被幽灵记录污染
+      state.logs = [];
+    }
 
     const index = new Map();
     state.words.forEach(w => index.set(hashKey(w), w));
@@ -587,6 +613,73 @@
     if (!parsed.ok) return parsed;
     const res = importWords(parsed.words, mode);
     return Object.assign({ ok: true, invalid: parsed.invalid, parsedTotal: parsed.total }, res);
+  }
+
+  /* --------------------------- 自动备份 --------------------------- */
+  function readBackups() {
+    if (!storage) return [];
+    try {
+      const arr = JSON.parse(storage.getItem(BACKUP_KEY) || '[]');
+      return Array.isArray(arr) ? arr.filter(b => b && b.state && Array.isArray(b.state.words)) : [];
+    } catch (e) { return []; }
+  }
+
+  function writeBackups(list) {
+    if (!storage) return false;
+    try {
+      storage.setItem(BACKUP_KEY, JSON.stringify(list.slice(-MAX_BACKUPS)));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* 保存当前完整状态（含复习记录）作为一份备份；返回备份信息，失败返回 null */
+  function makeBackup(reason) {
+    if (!storage || !state.words.length) return null;
+    const list = readBackups();
+    const rec = {
+      at: now(),
+      count: state.words.length,
+      reason: reason || 'auto',
+      state: JSON.parse(JSON.stringify({
+        version: state.version,
+        words: state.words,
+        logs: state.logs,
+        updatedAt: state.updatedAt
+      }))
+    };
+    list.push(rec);
+    writeBackups(list);
+    return { at: rec.at, count: rec.count, reason: rec.reason };
+  }
+
+  /* 每次打开最多留一份当日备份；若今天已有备份就不再重复写 */
+  function maybeDailyBackup() {
+    if (!storage || !state.words.length) return;
+    const list = readBackups();
+    const last = list[list.length - 1];
+    if (last && dayStart(last.at) === dayStart(now())) return;
+    makeBackup('daily');
+  }
+
+  function backups() {
+    return readBackups().map((b, i) => ({ index: i, at: b.at, count: b.count, reason: b.reason || 'auto' }));
+  }
+
+  function restoreBackup(index) {
+    const list = readBackups();
+    const rec = list[index];
+    if (!rec || !rec.state) return null;
+    // 恢复前先给当前数据留一份，避免恢复错了没有退路
+    if (state.words.length) makeBackup('before-restore');
+    const snap = rec.state;
+    state = {
+      version: SCHEMA_VERSION,
+      words: Array.isArray(snap.words) ? snap.words.map(normalizeStored).filter(Boolean) : [],
+      logs: Array.isArray(snap.logs) ? snap.logs.slice(-2000) : [],
+      updatedAt: now()
+    };
+    persist();
+    return { at: rec.at, count: state.words.length };
   }
 
   /* --------------------------- 示例数据 --------------------------- */
@@ -633,6 +726,7 @@
   /* scope: 'all' 全部 | 'logs' 仅复习记录 | 'words' 仅单词 */
   function clear(scope) {
     if (scope === 'logs') {
+      makeBackup('before-clear-logs');
       const n = state.logs.length;
       state.logs = [];
       const t = now();
@@ -657,6 +751,7 @@
       return n;
     }
     const n = state.words.length;
+    makeBackup('before-clear-all');
     state = { version: SCHEMA_VERSION, words: [], logs: [], updatedAt: now() };
     persist();
     return n;
@@ -664,8 +759,10 @@
 
   function storageSize() {
     try {
-      const raw = storage ? storage.getItem(STORAGE_KEY) : '';
-      return raw ? raw.length : 0;
+      if (!storage) return 0;
+      const raw = storage.getItem(STORAGE_KEY) || '';
+      const bak = storage.getItem(BACKUP_KEY) || '';
+      return raw.length + bak.length;
     } catch (e) { return 0; }
   }
 
@@ -676,6 +773,7 @@
     add, update, remove, setFavorite, setLevel,
     review, buildQueue, dueCount, isDueToday, logsToday, logsForWord, snapshot, undoReview,
     stats, exportJSON, exportPayload, parseImport, importWords, importText,
+    makeBackup, backups, restoreBackup,
     addSamples, removeSamples, clear, storageSize,
     isMemoryOnly: () => memoryOnly,
     hasLoadError: () => !!state.loadError,

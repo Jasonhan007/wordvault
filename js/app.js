@@ -238,7 +238,7 @@
     const s = V.stats();
     $('#homeDue').textContent = s.due;
     $('#homeDueSub').textContent = s.due > 0
-      ? (s.fresh > 0 ? '其中 ' + s.fresh + ' 个是还没复习过的新词' : '优先复习“不认识 / 模糊”的单词')
+      ? (s.freshDue > 0 ? '其中 ' + s.freshDue + ' 个是还没复习过的新词' : '优先复习“不认识 / 模糊”的单词')
       : (s.total ? '所有单词都在复习计划内' : '先去添加你的第一个真题单词');
 
     $('#homeStats').innerHTML = [
@@ -362,7 +362,7 @@
       const sections = V.sectionsUsed();
       $('#reviewBody').innerHTML = '' +
         '<div class="page-header"><h1 class="page-title">复习</h1></div>' +
-        '<div class="card">' +
+        '<div class="card review-hero">' +
           '<p class="hero-label">今日待复习</p>' +
           '<p class="hero-number"><span>' + due + '</span><span class="hero-unit">词</span></p>' +
           '<p class="hero-sub">' + (unmastered ? '未掌握单词共 ' + unmastered + ' 个' : '暂时没有需要复习的单词') + '</p>' +
@@ -378,8 +378,9 @@
             '</div>' +
           '</div>' +
         '</div>' +
-        '<button class="btn btn-primary btn-block" data-action="start-review">开始复习（' + due + '）</button>' +
-        (unmastered > due ? '<button class="btn btn-block" data-action="review-all-unmastered">复习全部未掌握（' + unmastered + '）</button>' : '') +
+        '<button class="btn btn-primary btn-block" data-action="' + (due > 0 ? 'start-review' : (unmastered ? 'review-all-unmastered' : 'start-review')) + '">' +
+          (due > 0 ? '开始复习（' + due + '）' : (unmastered ? '复习全部未掌握（' + unmastered + '）' : '开始复习（0）')) + '</button>' +
+        (due > 0 && unmastered > due ? '<button class="btn btn-block" data-action="review-all-unmastered">复习全部未掌握（' + unmastered + '）</button>' : '') +
         '<p class="set-hint">复习顺序：不认识的词优先，其次是模糊的词；标记为「认识」后间隔会逐步拉长（1 → 2 → 4 → 7 → 15 → 30 → 60 → 90 天），因此不会越积越多。</p>';
       return;
     }
@@ -406,8 +407,12 @@
             '<div class="summary-cell"><div class="v" style="color:var(--orange)">' + s.counts.fuzzy + '</div><div class="k">模糊</div></div>' +
             '<div class="summary-cell"><div class="v" style="color:var(--red)">' + s.counts.unknown + '</div><div class="k">不认识</div></div>' +
           '</div>' +
-          '<button class="btn btn-primary btn-block" data-action="start-review">' + (remaining ? '再来一轮待复习（' + remaining + '）' : '再复习一轮未掌握') + '</button>' +
-          (unmastered > 0 ? '<button class="btn btn-block" data-action="review-all-unmastered">复习全部未掌握（' + unmastered + '）</button>' : '') +
+          (remaining
+            ? '<button class="btn btn-primary btn-block" data-action="start-review">再来一轮待复习（' + remaining + '）</button>' +
+              (unmastered > remaining ? '<button class="btn btn-block" data-action="review-all-unmastered">复习全部未掌握（' + unmastered + '）</button>' : '')
+            : (unmastered > 0
+                ? '<button class="btn btn-primary btn-block" data-action="review-all-unmastered">再复习一轮未掌握（' + unmastered + '）</button>'
+                : '')) +
           '<button class="btn btn-block" data-action="quit-review">返回</button>' +
           '<p class="set-hint" style="text-align:center">选错了？点右上角「‹ 上一词」可以撤销上一次评分。</p>' +
         '</div>';
@@ -524,7 +529,7 @@
   function barList(rows, colorFn) {
     const max = rows.reduce((m, r) => Math.max(m, r.count), 0) || 1;
     return '<div class="bar-list">' + rows.map(r => {
-      const pct = Math.max(2, Math.round((r.count / max) * 100));
+      const pct = r.count > 0 ? Math.max(2, Math.round((r.count / max) * 100)) : 0;
       const color = colorFn ? colorFn(r) : 'var(--blue)';
       return '<div class="bar-row">' +
         '<span class="bar-label" title="' + esc(r.label) + '">' + esc(r.label) + '</span>' +
@@ -605,6 +610,23 @@
     const s = V.stats();
     const bytes = V.storageSize();
     const kb = bytes ? (bytes / 1024).toFixed(1) + ' KB' : '0 KB';
+    const backups = V.backups();
+    const reasonLabels = {
+      daily: '每日自动', manual: '手动', 'before-clear-all': '清空前', 'before-clear-logs': '清空复习记录前',
+      'before-import-replace': '替换导入前', 'before-delete': '批量删除前', 'before-restore': '恢复前'
+    };
+    const backupHtml = backups.length
+      ? backups.slice().reverse().map(b => {
+          const d = new Date(b.at);
+          const label = d.toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' }) + ' ' +
+            pad(d.getHours()) + ':' + pad(d.getMinutes());
+          return '<button class="set-row" data-action="restore-backup" data-index="' + b.index + '">' +
+            '<span><span class="set-row-label">恢复备份 · ' + esc(label) + '</span>' +
+            '<span class="set-row-sub" style="display:block">' + b.count + ' 个单词 · ' +
+              esc(reasonLabels[b.reason] || '自动') + '</span></span>' +
+            '<span class="set-row-value">恢复</span></button>';
+        }).join('')
+      : row('noop', '暂无备份', '每次打开应用会自动保存一份', '');
     const last = (function () {
       const all = V.all();
       if (!all.length) return '暂无数据';
@@ -645,6 +667,10 @@
           '<div style="padding:0 15px 13px"><button class="btn btn-primary btn-block" data-action="import-paste-run">校验并导入</button></div>' +
         '</div>' +
         '<p class="set-hint">导入前会先校验格式：缺少 word 字段的条目会被跳过并统计，不会覆盖现有数据（除非你选择“清空后替换”）。</p></div>'
+
+      + '<div class="block"><div class="block-head"><h2 class="block-title">自动备份</h2></div>' +
+        '<div class="set-group">' + backupHtml + '</div>' +
+        '<p class="set-hint">每天首次打开，以及清空、替换导入、批量删除前，都会把完整数据（含复习进度）备份在本机，最多保留 3 份。清除浏览器网站数据会一并删除这些备份，重要数据仍建议导出。</p></div>'
 
       + '<div class="block"><div class="block-head"><h2 class="block-title">示例数据</h2></div>' +
         '<div class="set-group">' +
@@ -741,6 +767,8 @@
     const sheet = $('#wordSheet');
     const backdrop = $('#sheetBackdrop');
     sheet.hidden = false; backdrop.hidden = false;
+    const body = $('.sheet-body');
+    if (body) body.scrollTop = 0; // 每次打开都从顶部开始，避免沿用上一次的滚动位置
     void sheet.offsetHeight; // 强制重排，保证从屏外滑入的过渡能触发
     sheet.classList.add('is-open');
     backdrop.classList.add('is-open');
@@ -918,6 +946,11 @@
 
   function runImport(words, mode) {
     const r = V.importWords(words, mode);
+    if (mode === 'replace') {
+      ui.selection.clear();
+      ui.session = null;
+      ui.editingId = null;
+    }
     renderAll();
     showDialog({
       title: '导入完成',
@@ -1128,7 +1161,10 @@
       pickOne('按熟悉程度筛选', opts, ui.filter.level, (v) => { ui.filter.level = v; renderWords(); });
     },
     'filter-section': () => {
-      const opts = [{ value: 'all', label: '全部题型' }].concat(V.SECTIONS.map(s => ({ value: s.key, label: s.label })));
+      // 除固定题型外，若旧数据里存在「其他」，也提供筛选入口
+      const legacy = V.sectionsUsed().filter(k => !V.SECTIONS.some(s => s.key === k));
+      const all = V.SECTIONS.concat(legacy.map(k => ({ key: k, label: V.SECTION_LABELS[k] })));
+      const opts = [{ value: 'all', label: '全部题型' }].concat(all.map(s => ({ value: s.key, label: s.label })));
       pickOne('按题型筛选', opts, ui.filter.section, (v) => { ui.filter.section = v; renderWords(); });
     },
     'sort-words': () => {
@@ -1171,6 +1207,31 @@
       const text = ta.value.trim();
       if (!text) { toast('请先粘贴 JSON 内容'); return; }
       handleImportText(text, '粘贴内容');
+    },
+    'restore-backup': (el) => {
+      const idx = Number(el.dataset.index);
+      const b = V.backups()[idx];
+      if (!b) { toast('备份不存在'); return; }
+      const d = new Date(b.at);
+      const when = d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      showDialog({
+        title: '恢复这份备份？',
+        text: '将用 ' + when + ' 的备份（' + b.count + ' 个单词，含复习进度）替换当前数据。\n当前数据会先自动备份一份，恢复后也可以再换回来。',
+        actions: [
+          {
+            label: '恢复', kind: 'destructive', onClick: () => {
+              const r = V.restoreBackup(idx);
+              if (!r) { toast('恢复失败'); return; }
+              ui.selection.clear();
+              ui.session = null;
+              ui.editingId = null;
+              renderAll();
+              toast('已恢复 ' + r.count + ' 个单词');
+            }
+          },
+          { label: '取消' }
+        ]
+      });
     },
     'add-samples': () => {
       const n = V.addSamples();
